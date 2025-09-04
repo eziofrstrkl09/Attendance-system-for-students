@@ -23,7 +23,7 @@ public class Attendance {
     private LocalDate date;
 
     @Column(nullable = false)
-    private LocalTime time;
+    private LocalTime time_exit;
 
     @Column(nullable = false)
     private String status;
