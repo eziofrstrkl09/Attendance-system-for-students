@@ -31,7 +31,7 @@ public class PublicAttendanceController {
         Attendance attendance = new Attendance();
         attendance.setStudent(student);
         attendance.setDate(LocalDate.now());
-        attendance.setTime(LocalTime.now());
+        attendance.setTime_exit(LocalTime.now());
         attendance.setStatus("PRESENT");
 
         attendanceRepository.save(attendance);
