@@ -1,8 +1,11 @@
 package com.example.attendancesystem.controller;
 
 import com.example.attendancesystem.config.JwtUtil;
-import com.example.attendancesystem.model.User;
-import com.example.attendancesystem.repository.UserRepository;
+import com.example.attendancesystem.dto.LoginRequest;
+import com.example.attendancesystem.dto.RegisterRequest;
+import com.example.attendancesystem.model.Users;
+import com.example.attendancesystem.repository.UsersRepository;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -16,33 +19,39 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
-    private final UserRepository userRepository;
+    private final UsersRepository usersRepository;
     private final PasswordEncoder passwordEncoder;
 
     public AuthController(AuthenticationManager authenticationManager, JwtUtil jwtUtil,
-                          UserRepository userRepository, PasswordEncoder passwordEncoder) {
+                          UsersRepository usersRepository, PasswordEncoder passwordEncoder) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
-        this.userRepository = userRepository;
+        this.usersRepository = usersRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestParam String username, @RequestParam String password) {
+    public ResponseEntity<String> login(@Valid @RequestBody LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(username, password));
-        String token = jwtUtil.generateToken(username);
+                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
+        String token = jwtUtil.generateToken(loginRequest.getUsername());
         return ResponseEntity.ok(token);
     }
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestParam String username, @RequestParam String password,
-                                           @RequestParam String role) {
-        User user = new User();
-        user.setUsername(username);
-        user.setPasswordHash(passwordEncoder.encode(password));
-        user.setRole(role);
-        userRepository.save(user);
+    public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest registerRequest) {
+        if (usersRepository.findByUsername(registerRequest.getUsername()).isPresent()) {
+            return ResponseEntity.badRequest().body("User already exists");
+        }
+        Users user = new Users();
+        user.setUsername(registerRequest.getUsername());
+        user.setPasswordHash(passwordEncoder.encode(registerRequest.getPassword()));
+        String role = registerRequest.getRole().toUpperCase();
+        if (!role.equals("PRINCIPAL") && !role.equals("TEACHER")) {
+            return ResponseEntity.badRequest().body("Invalid role: must be 'principal' or 'teacher'");
+        }
+        user.setRole(Users.Role.valueOf(role));
+        usersRepository.save(user);
         return ResponseEntity.ok("User registered successfully");
     }
 }

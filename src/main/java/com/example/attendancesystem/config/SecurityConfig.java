@@ -45,6 +45,7 @@ public class SecurityConfig {
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
         http
                 // Disables CSRF protection as we are using a stateless REST API with JWT.
                 .csrf(csrf -> csrf.disable())
@@ -58,8 +59,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         // Allows all requests to public endpoints (e.g., login, registration) without authentication.
                         .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/error").permitAll()
                         // Requires authentication for requests to admin endpoints.
-                        .requestMatchers("/api/admin/**").authenticated()
+                        .requestMatchers("/api/admin/**").hasAnyRole("PRINCIPAL", "TEACHER")
                         // Requires authentication for any other request not covered by the above rules.
                         .anyRequest().authenticated()
                 )
