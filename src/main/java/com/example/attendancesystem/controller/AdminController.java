@@ -109,6 +109,40 @@ public class AdminController {
         return ResponseEntity.ok(studentRepository.findByClassEntityClassId(classEntity.getClassId()));
     }
 
+    @GetMapping("/students/{id}")
+    public ResponseEntity<Students> getStudentById(@PathVariable Integer id, Authentication authentication) {
+        // 1. Find the requested student
+        Optional<Students> studentOpt = studentRepository.findById(id);
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        Students student = studentOpt.get();
+
+        // 2. Get the authenticated user and their role
+        String username = authentication.getName();
+        Users user = usersRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+
+        // 3. Check authorization
+        if (user.getRole() == Users.Role.PRINCIPAL) {
+            // Principal can view any student
+            return ResponseEntity.ok(student);
+        }
+
+        // For teachers, check if they are authorized for this student's class
+        Teachers teacher = teachersRepository.findByUserUserId(user.getUserId())
+                .orElseThrow(() -> new RuntimeException("Teacher not found for user: " + username));
+
+        Classes teacherClass = teacher.getClassEntity();
+        if (teacherClass != null && teacherClass.getClassId().equals(student.getClassEntity().getClassId())) {
+            // Teacher is authorized for this student's class
+            return ResponseEntity.ok(student);
+        }
+
+        // 4. If not authorized, return Forbidden
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
     @GetMapping("/attendance")
     public ResponseEntity<List<com.example.attendancesystem.model.Attendance>> getAttendanceByDate(
             @RequestParam LocalDate date, Authentication authentication) {
@@ -145,5 +179,22 @@ public class AdminController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(List.of()); // Teacher not authorized for this student
         }
         return ResponseEntity.ok(attendanceRepository.findByStudentStudentId(studentId));
+    }
+
+    @GetMapping("/classes")
+    public ResponseEntity<List<Classes>> getAllClasses(Authentication authentication) {
+        String username = authentication.getName();
+        Users user = usersRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+        if (user.getRole() == Users.Role.PRINCIPAL) {
+            return ResponseEntity.ok(classesRepository.findAll());
+        }
+        Teachers teacher = teachersRepository.findByUserUserId(user.getUserId())
+                .orElseThrow(() -> new RuntimeException("Teacher not found for user: " + username));
+        Classes classEntity = teacher.getClassEntity();
+        if (classEntity == null) {
+            return ResponseEntity.ok(List.of());
+        }
+        return ResponseEntity.ok(List.of(classEntity));
     }
 }
