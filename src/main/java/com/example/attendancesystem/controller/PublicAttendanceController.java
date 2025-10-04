@@ -26,42 +26,56 @@ public class PublicAttendanceController {
 
     @PostMapping("/record")
     public ResponseEntity<String> recordAttendance(@RequestParam @NotBlank String uid, @RequestParam(required = false) String time) {
-        Students student = studentRepository.findByUid(uid)
-                .orElseThrow(() -> new RuntimeException("Student not found with UID: " + uid));
+        // Find the student by their unique RFID UID
+        Optional<Students> studentOpt = studentRepository.findByUid(uid);
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body("Student not found with UID: " + uid);
+        }
+        Students student = studentOpt.get();
 
-        LocalTime entryTime = time != null ? LocalTime.parse(time) : LocalTime.now();
+        // Determine the entry time
+        LocalTime entryTime = (time != null && !time.isEmpty()) ? LocalTime.parse(time) : LocalTime.now();
 
-        Optional<Attendance> existingAttendance = attendanceRepository.findByStudentStudentIdAndDate(student.getStudentId(), LocalDate.now());
+        // --- CHANGE IS HERE ---
+        // Find if an attendance record already exists for this student on this date
+        Attendance attendance = attendanceRepository.findByStudentStudentIdAndDate(student.getStudentId(), LocalDate.now())
+                .orElse(new Attendance()); // If not, create a new one
 
-        if (existingAttendance.isPresent()) {
-            Attendance attendance = existingAttendance.get();
-            attendance.setTimeEntry(entryTime);
-            attendance.setStatus(true);
-            attendanceRepository.save(attendance);
-            return ResponseEntity.ok("Attendance updated for student: " + student.getName());
+        // If it's a new record, set the student and date
+        if (attendance.getAttendanceId() == null) {
+            attendance.setStudent(student);
+            attendance.setDate(LocalDate.now());
         }
 
-        Attendance attendance = new Attendance();
-        attendance.setStudent(student);
-        attendance.setDate(LocalDate.now());
-        attendance.setStatus(true);
+        // Set the status to present and record the entry time
+        attendance.setStatus(true); // true means present
         attendance.setTimeEntry(entryTime);
+
+        // Save the new or updated record
         attendanceRepository.save(attendance);
-        return ResponseEntity.ok("Attendance recorded for student: " + student.getName());
+        return ResponseEntity.ok("Attendance entry recorded for student: " + student.getName());
     }
 
     @PostMapping("/exit")
     public ResponseEntity<String> recordExit(@RequestParam @NotBlank String uid, @RequestParam(required = false) String time) {
-        Students student = studentRepository.findByUid(uid)
-                .orElseThrow(() -> new RuntimeException("Student not found with UID: " + uid));
+        Optional<Students> studentOpt = studentRepository.findByUid(uid);
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body("Student not found with UID: " + uid);
+        }
+        Students student = studentOpt.get();
 
-        LocalTime exitTime = time != null ? LocalTime.parse(time) : LocalTime.now();
+        LocalTime exitTime = (time != null && !time.isEmpty()) ? LocalTime.parse(time) : LocalTime.now();
 
-        Attendance existingAttendance = attendanceRepository.findByStudentStudentIdAndDate(student.getStudentId(), LocalDate.now())
-                .orElseThrow(() -> new RuntimeException("No attendance record found for today"));
+        // Find the existing attendance record for today. It should exist from the entry scan.
+        Optional<Attendance> attendanceOpt = attendanceRepository.findByStudentStudentIdAndDate(student.getStudentId(), LocalDate.now());
 
-        existingAttendance.setTimeExit(exitTime);
-        attendanceRepository.save(existingAttendance);
+        if (attendanceOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body("No entry record found for today. Cannot record exit.");
+        }
+
+        Attendance attendance = attendanceOpt.get();
+        attendance.setTimeExit(exitTime);
+        attendanceRepository.save(attendance);
         return ResponseEntity.ok("Exit time recorded for student: " + student.getName());
     }
 }

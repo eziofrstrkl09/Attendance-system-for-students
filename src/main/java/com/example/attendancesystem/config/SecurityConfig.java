@@ -62,7 +62,7 @@ public class SecurityConfig {
                 // This replaces the deprecated authorizeHttpRequests().and() syntax.
                 .authorizeHttpRequests(authorize -> authorize
                         // Allows all requests to public endpoints (e.g., login, registration) without authentication.
-                        .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/api/public/**", "/ws/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         // Requires authentication for requests to admin endpoints.
                         .requestMatchers("/api/admin/**").hasAnyRole("PRINCIPAL", "TEACHER")

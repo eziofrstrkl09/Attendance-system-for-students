@@ -26,6 +26,12 @@
         @JoinColumn(name = "class_id",nullable = false)
         private Classes classEntity;
 
+        @Column(length=100) // New field for email
+        private String email;
+
+        @Column(length=20) // New field for phone
+        private String phone;
+
     //    @Column(nullable=false)
     //    private String className;
     //    @Column(nullable = false, columnDefinition = "TEXT DEFAULT 'A'")

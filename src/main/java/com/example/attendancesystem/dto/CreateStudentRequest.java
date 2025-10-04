@@ -1,5 +1,6 @@
 package com.example.attendancesystem.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -22,5 +23,9 @@ public class CreateStudentRequest {
 
     @NotBlank(message = "Section is required")
     private String section;
+
+    @Email(message = "Please provide a valid email address")
+    private String email;
+    private String phone;
 
 }
